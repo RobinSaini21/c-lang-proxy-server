@@ -3,19 +3,52 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-int windows_proxy() {
+void handle_request(SOCKET client_socket)
+{
+    char buffer[1024]; // Fixed-size buffer
+    int bytesReceived;
+    
+    // Loop until the entire request is received
+    do {
+        bytesReceived = recv(client_socket, buffer, sizeof(buffer), 0);
+        if (bytesReceived > 0) {
+            // Process the received data if needed
+        } else if (bytesReceived == 0) {
+            printf("Connection closed by client.\n");
+            break; // Connection closed by client
+        } else {
+            printf("Error in recv: %d\n", WSAGetLastError());
+            break; // Error in recv
+        }
+    } while (bytesReceived == sizeof(buffer)); // Continue until buffer is full
+
+    printf("Received request:\n%s\n", buffer);
+    const char response[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Yellow, World!</h1></body></html>";
+    int bytesSent = send(client_socket, response, strlen(response), 0);
+    if (bytesSent == SOCKET_ERROR) {
+        printf("Error in send: %d\n", WSAGetLastError());
+    }
+
+    // No need to free buffer since it's not dynamically allocated
+}
+
+
+int proxy_server()
+{
     WSADATA wsaData;
     SOCKET listenSocket, clientSocket;
     struct sockaddr_in serverAddr, clientAddr;
     int clientAddrLen = sizeof(clientAddr);
-    char buffer[1024];
+    
 
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
         printf("WSAStartup failed.\n");
         return 1;
     }
 
-    if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+    if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+    {
         printf("Error creating socket.\n");
         return 1;
     }
@@ -23,14 +56,16 @@ int windows_proxy() {
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serverAddr.sin_port = htons(8080);
-    if (bind(listenSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+    if (bind(listenSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+    {
         printf("Bind failed.\n");
         closesocket(listenSocket);
         WSACleanup();
         return 1;
     }
 
-    if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
+    if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
+    {
         printf("Listen failed.\n");
         closesocket(listenSocket);
         WSACleanup();
@@ -39,9 +74,11 @@ int windows_proxy() {
 
     printf("Server listening on port 8080...\n");
 
-    while (1) {
-        clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-        if (clientSocket == INVALID_SOCKET) {
+    while (1)
+    {
+        clientSocket = accept(listenSocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
+        if (clientSocket == INVALID_SOCKET)
+        {
             printf("Accept failed.\n");
             closesocket(listenSocket);
             WSACleanup();
@@ -50,15 +87,7 @@ int windows_proxy() {
 
         printf("Client connected: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 
-        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-        if (bytesReceived > 0) {
-            buffer[bytesReceived] = '\0'; 
-
-            // Process the request and send a response
-            char response[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Hello, World!</h1></body></html>";
-            send(clientSocket, response, strlen(response), 0);
-        }
-
+        handle_request(clientSocket);
         closesocket(clientSocket);
     }
 

@@ -3,6 +3,6 @@
 
 #include <winsock2.h>
 
-void windows_proxy();
+void proxy_server();
 
 #endif
