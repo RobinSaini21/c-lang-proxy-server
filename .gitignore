@@ -1,0 +1,12 @@
+# Compiled object files
+*.o
+
+# Executables
+buildfile/build
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Visual Studio Code specific files
+.vscode/
